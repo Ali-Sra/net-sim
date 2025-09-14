@@ -1,6 +1,8 @@
+
 import { Topology } from './model.js';
 import { initPaletteHandlers } from './drag.js';
 import { saveTopology, loadLatestTopology } from './api.js';
+import { initWiring, drawAllLinks } from './wire.js';
 
 let topo = new Topology({ name:'untitled', nodes:[], links:[] });
 const $ = s => document.querySelector(s);
@@ -13,49 +15,64 @@ export function initApp() {
   // هندل پالت
   initPaletteHandlers(
     // onCreate
-    (node) => { topo.nodes.push(node); },
+    (node) => {
+      topo.nodes.push(node);
+      drawAllLinks(topo); // ensure links re-render on new nodes
+    },
     // onMove
-    (id, x, y) => {
+    ({ id, x, y }) => {
       const n = topo.nodes.find(n => n.id === id);
       if (n) { n.x = x; n.y = y; }
+      drawAllLinks(topo); // update link positions while dragging
     }
   );
 
-  // ذخیره
+  // wiring
+  initWiring(topo);
+
+  // Controls
   $('#saveBtn').addEventListener('click', async () => {
-    const name = $('#topoName').value.trim() || 'untitled';
-    topo.name = name;
+    topo.name = $('#topoName').value || 'untitled';
     try {
       await saveTopology(topo);
       status('ذخیره شد ✅');
     } catch (e) {
-      status('خطا در ذخیره ❌', false);
-      console.error(e);
+      status('ذخیره نشد ❌', false);
     }
   });
 
-  // بارگذاری آخرین
   $('#loadBtn').addEventListener('click', async () => {
     try {
-      const data = await loadLatestTopology();
-      // پاک‌سازی بوم
-      document.getElementById('nodes').innerHTML = '';
-      topo = new Topology({ name: data.name, nodes:[], links:[] });
+      const loaded = await loadLatestTopology();
+      topo = new Topology(loaded);
+      // Rebuild nodes visually
+      const nodesLayer = document.getElementById('nodes');
+      nodesLayer.innerHTML = '';
+      const evt = new Event('drop'); // dummy to access builder in drag.js not needed now
 
-      // رندر دوباره نودها
-      const { buildNode } = await import('./drag.js');
-      for (const n of data.nodes) {
-        const created = buildNode(n.type, n.x, n.y, (id, x, y) => {
-          const tnode = topo.nodes.find(nn => nn.id === id);
-          if (tnode) { tnode.x = x; tnode.y = y; }
-        });
-        // حفظ id/label اصلی
-        created.id = n.id; created.label = n.label; created.ip = n.ip;
-        // sync dataset id روی DOM:
-        const last = document.getElementById('nodes').lastElementChild;
-        if (last) last.setAttribute('data-id', n.id);
-        topo.nodes.push(created);
-      }
+      // simple rebuild using same builder logic via synthetic drag is heavy; instead create invisible palette builder:
+      // We'll just re-create DOM nodes matching saved positions:
+      topo.nodes.forEach(n => {
+        // create minimal DOM group matching drag.js expectations
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.classList.add('node');
+        g.setAttribute('data-id', n.id);
+        g.setAttribute('transform', `translate(${n.x},${n.y})`);
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
+        rect.setAttribute('width', '100'); rect.setAttribute('height', '50');
+        rect.setAttribute('fill', '#eaeaea'); rect.setAttribute('stroke', '#555');
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', '50'); label.setAttribute('y', '30');
+        label.setAttribute('text-anchor', 'middle'); label.textContent = (n.type || '').toUpperCase();
+
+        g.appendChild(rect); g.appendChild(label);
+        nodesLayer.appendChild(g);
+      });
+
+      drawAllLinks(topo);
       $('#topoName').value = topo.name;
       status('بارگذاری شد 📥');
     } catch (e) {

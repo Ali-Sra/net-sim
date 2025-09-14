@@ -27,3 +27,8 @@ body { margin:0; font-family: system-ui, sans-serif; background:#f6f7fb; color:#
 .node text { font-size:14px; fill:#333; }
 
 .badge { font-size:11px; fill:#555; }
+
+/* Cable palette */
+.cables { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.cable-btn { border:1px solid #bbb; background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; }
+.cable-btn.active { outline:2px solid #2b6cff; }

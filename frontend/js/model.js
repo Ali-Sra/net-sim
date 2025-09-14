@@ -1,6 +1,15 @@
 // انواع نود
 export const NodeType = { PC: 'pc', SWITCH: 'switch', ROUTER: 'router' };
 
+// انواع کابل
+export const CableType = {
+  AUTO: 'auto',
+  COPPER: 'copper',
+  CROSS: 'cross',
+  FIBER: 'fiber',
+  SERIAL: 'serial',
+};
+
 // مدل نود
 export class Node {
   constructor({ id, type, x, y, label = '', ip = '' }) {
@@ -11,7 +20,9 @@ export class Node {
 
 // مدل لینک
 export class Link {
-  constructor({ id, a, b }) { this.id = id; this.a = a; this.b = b; }
+  constructor({ id, a, b, type = CableType.AUTO }) {
+    this.id = id; this.a = a; this.b = b; this.type = type;
+  }
 }
 
 // توپولوژی

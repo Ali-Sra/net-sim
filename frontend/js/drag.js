@@ -1,4 +1,6 @@
+
 import { Node, NodeType } from './model.js';
+import { drawAllLinks } from './wire.js';
 
 const stage = () => document.getElementById('stage');
 const nodesLayer = () => document.getElementById('nodes');
@@ -14,80 +16,52 @@ function mousePos(evt) {
 }
 
 function colors(type) {
-  if (type === NodeType.PC) return { fill:'#d8ecff', stroke:'#2b6cff' };
-  if (type === NodeType.SWITCH) return { fill:'#e8ffd8', stroke:'#2b6cff' };
-  return { fill:'#ffe8d8', stroke:'#2b6cff' }; // router
+  switch (type) {
+    case NodeType.PC: return { fill:'#eaf4ff', stroke:'#2b6cff' };
+    case NodeType.SWITCH: return { fill:'#fff8e6', stroke:'#f39c12' };
+    case NodeType.ROUTER: return { fill:'#fceaea', stroke:'#e74c3c' };
+    default: return { fill:'#eee', stroke:'#999' };
+  }
 }
 
-// ساخت شکل SVG برای نود (بدون عکس)
-function nodeGlyph(type, labelText) {
+function buildNode(type, x, y, onMove) {
+  const id = 'N' + (++nodeSeq);
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.classList.add('node');
+  g.setAttribute('data-id', id);
+  g.setAttribute('transform', `translate(${x},${y})`);
 
   const { fill, stroke } = colors(type);
-
   const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  rect.setAttribute('x','0'); rect.setAttribute('y','0');
-  rect.setAttribute('width','120'); rect.setAttribute('height','72');
-  rect.setAttribute('fill', fill); rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width','2');
+  rect.setAttribute('x', '0'); rect.setAttribute('y', '0');
+  rect.setAttribute('width', '100'); rect.setAttribute('height', '50');
+  rect.setAttribute('fill', fill); rect.setAttribute('stroke', stroke);
 
   const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  label.setAttribute('x','12'); label.setAttribute('y','42');
-  label.textContent = labelText;
+  label.setAttribute('x', '50'); label.setAttribute('y', '30');
+  label.setAttribute('text-anchor', 'middle'); label.textContent = type.toUpperCase();
 
-  const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  badge.setAttribute('x','12'); badge.setAttribute('y','20'); badge.setAttribute('class','badge');
-  badge.textContent = type.toUpperCase();
-
-  g.appendChild(rect); g.appendChild(badge); g.appendChild(label);
-  return g;
-}
-
-// API داخلی برای ساخت نود روی بوم
-export function buildNode(type, x, y, onMove) {
-  const id = `n-${++nodeSeq}`;
-  const label = type === 'pc' ? `PC${nodeSeq}` : type === 'switch' ? `SW${nodeSeq}` : `R${nodeSeq}`;
-  const g = nodeGlyph(type, label);
-  g.setAttribute('data-id', id);
-  g.setAttribute('data-type', type);
-  g.setAttribute('transform', `translate(${x},${y})`);
-  enableDrag(g, onMove);
+  g.appendChild(rect); g.appendChild(label);
   nodesLayer().appendChild(g);
-  return new Node({ id, type, x, y, label });
-}
 
-let dragging = null;
-function enableDrag(g, onMove) {
-  g.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    const pos = mousePos(e);
-    const m = /translate\(([-\d.]+),([-\d.]+)\)/.exec(g.getAttribute('transform')||'translate(0,0)');
-    const curX = parseFloat(m?.[1] ?? 0), curY = parseFloat(m?.[2] ?? 0);
-    dragging = { g, dx: pos.x - curX, dy: pos.y - curY };
-    g.classList.add('dragging'); g.setPointerCapture(e.pointerId);
-  });
-
-  g.addEventListener('pointermove', (e) => {
-    if (!dragging || dragging.g !== g) return;
-    const pos = mousePos(e);
-    const nx = snap(pos.x - dragging.dx), ny = snap(pos.y - dragging.dy);
+  // drag move
+  let dragging = false, sx=0, sy=0, ox=x, oy=y;
+  g.addEventListener('mousedown', (e) => { dragging = true; g.classList.add('dragging'); sx=e.clientX; sy=e.clientY; });
+  window.addEventListener('mouseup', () => { if (dragging){ dragging=false; g.classList.remove('dragging'); } });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    const nx = snap(ox + dx), ny = snap(oy + dy);
     g.setAttribute('transform', `translate(${nx},${ny})`);
-    if (onMove) {
-      const id = g.dataset.id;
-      onMove(id, nx, ny);
-    }
+    if (onMove) onMove({ id, x:nx, y:ny });
   });
 
-  g.addEventListener('pointerup', (e) => {
-    if (!dragging || dragging.g !== g) return;
-    g.classList.remove('dragging'); g.releasePointerCapture(e.pointerId);
-    dragging = null;
-  });
+  return new Node({ id, type, x, y, label:type.toUpperCase() });
 }
 
-// فعال‌سازی درگ‌دراپ پالت → بوم
 export function initPaletteHandlers(onCreate, onMove) {
-  document.querySelectorAll('.palette-item').forEach(el => {
+  // draggable from aside
+  document.querySelectorAll('.palette-item[draggable="true"]').forEach(el => {
     el.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('type', el.dataset.type);
     });

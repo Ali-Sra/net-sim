@@ -1,24 +1,45 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from storage import Storage
-import os, threading, webbrowser
+from pathlib import Path
+import threading, webbrowser, sys
 
-# فرانت‌اند را از پوشه frontend سرو کن
-FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend"))
+# ریشه پروژه = پوشه‌ی backend/..
+ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = ROOT / "frontend"
+INDEX_FILE = FRONTEND_DIR / "index.html"
+DATA_FILE = ROOT / "data" / "topologies.json"
 
-app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
-CORS(app)  # ضرری ندارد؛ ولی با same-origin دیگر لازم هم نیست
+# چاپ مسیرها برای اطمینان در لاگ
+print("ROOT         :", ROOT)
+print("FRONTEND_DIR :", FRONTEND_DIR, "exists:", FRONTEND_DIR.exists())
+print("INDEX_FILE   :", INDEX_FILE, "exists:", INDEX_FILE.exists())
+print("DATA_FILE    :", DATA_FILE)
 
-store = Storage(filepath="../data/topologies.json")
+app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
 
-# ---- صفحات فرانت‌اند ----
-@app.route("/")
+store = Storage(filepath=str(DATA_FILE))
+
+# ---------- Frontend ----------
+@app.get("/")
 def index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    # مستقیماً فایل index.html را بفرست (بدون تکیه به static_url_path)
+    if INDEX_FILE.exists():
+        return send_file(str(INDEX_FILE))
+    return ("index.html not found at: " + str(INDEX_FILE), 404)
 
-# (فایل‌های استاتیک مثل /assets/styles.css و /js/*.js را Flask خودش از static_folder می‌دهد)
+# سرو کردن فایل‌های استاتیک فرانت‌اند (css/js/img/...)
+@app.get("/<path:path>")
+def static_proxy(path):
+    file_path = FRONTEND_DIR / path
+    if file_path.exists():
+        # اگر فایل/پوشه وجود دارد از frontend بده
+        return send_from_directory(str(FRONTEND_DIR), path)
+    # در صورت مسیرهای SPA یا نبود فایل، برگرد به index.html
+    if INDEX_FILE.exists():
+        return send_file(str(INDEX_FILE))
+    return ("not found: " + str(file_path), 404)
 
-# ---- API ----
+# ---------- API ----------
 @app.get("/api/health")
 def health():
     return jsonify({"ok": True})
@@ -39,6 +60,7 @@ def latest_topology():
     return jsonify(topo)
 
 if __name__ == "__main__":
-    # مرورگر را خودکار باز کن
-    threading.Timer(1.0, lambda: webbrowser.open("http://127.0.0.1:5000/")).start()
+    url = "http://127.0.0.1:5000/"
+    threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    # از هر جایی می‌تونی اجرا کنی؛ مسیرها مطلق هستند
     app.run(host="127.0.0.1", port=5000, debug=True)
