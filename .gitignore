@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+*.sqlite3
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-*.log
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Builds
+dist/
+build/

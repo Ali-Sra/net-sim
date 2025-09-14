@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Net-Sim (Vanilla)</title>
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Net-Sim</h1>
+    <div class="actions">
+      <input id="topoName" placeholder="نام توپولوژی…" />
+      <button id="saveBtn">ذخیره</button>
+      <button id="loadBtn">بارگذاری آخرین</button>
+      <span id="status" class="status"></span>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="stage-wrap">
+      <svg id="stage" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#eee" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect x="0" y="0" width="1200" height="700" fill="url(#grid)"></rect>
+        <g id="links"></g>
+        <g id="nodes"></g>
+      </svg>
+    </section>
+
+    <aside class="palette">
+      <h3>پالت</h3>
+      <div class="toolbox">
+        <div class="palette-item" draggable="true" data-type="pc">PC</div>
+        <div class="palette-item" draggable="true" data-type="switch">Switch</div>
+        <div class="palette-item" draggable="true" data-type="router">Router</div>
+      </div>
+      <p class="hint">از پالت بگیر و روی بوم رها کن. (بدون عکس؛ فقط شکل و متن)</p>
+    </aside>
+  </main>
+
+  <script type="module">
+    import { initApp } from './js/app.js';
+    initApp();
+  </script>
+</body>
+</html>
